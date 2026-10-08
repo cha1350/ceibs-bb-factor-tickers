@@ -3,6 +3,7 @@ import type { Dataset, Row, Security } from "../types";
 import type { MarketDataProvider, DatasetResult } from "./interface";
 import { ProviderError } from "./interface";
 import { validDate } from "../dates";
+import { parseSecurityQuery } from "../security-search";
 const BASE = "https://financialmodelingprep.com/stable/";
 const cache = new Map<string, { rows: Row[]; at: string; expires: number }>();
 const pending = new Map<string, Promise<{ rows: Row[]; at: string }>>();
@@ -108,7 +109,7 @@ export async function requestFmp(
         throw new ProviderError(
           endpoint,
           "entitlement",
-          `${endpoint}: access denied (${response.status}). Check your API key, subscription, and symbol coverage; CSV is supported.`,
+          `${endpoint}: access denied (${response.status}). ${response.status === 401 ? "Check your server API key." : "Your FMP account does not permit this dataset or symbol. Listing search can succeed while financial data is restricted; check plan and market coverage."} Import CSV if unavailable.`,
         );
       if (response.status >= 500 && attempt < 2) {
         await pause(500 * 2 ** attempt);
@@ -184,9 +185,10 @@ const endpoints: Record<Dataset, string> = {
 export class FmpProvider implements MarketDataProvider {
   readonly name = "Financial Modeling Prep";
   async search(query: string): Promise<Security[]> {
+    const lookup = parseSecurityQuery(query);
     const result = await Promise.allSettled(
       ["search-symbol", "search-name"].map((endpoint) =>
-        requestFmp(endpoint, { query, limit: "30" }, 86400000),
+        requestFmp(endpoint, { query: lookup.query, limit: "30" }, 86400000),
       ),
     );
     const hits = result.flatMap((r) =>
@@ -207,13 +209,14 @@ export class FmpProvider implements MarketDataProvider {
           exchange: String(r.exchangeShortName || r.exchange || "Unknown"),
           currency: String(r.currency || "Unknown"),
         };
-        unique.set(`${s.symbol}:${s.exchange}`, s);
+        if (!lookup.currency || s.currency.toUpperCase() === lookup.currency)
+          unique.set(`${s.symbol}:${s.exchange}`, s);
       }
     });
     return [...unique.values()].sort(
       (a, b) =>
-        Number(b.symbol.toLowerCase() === query.toLowerCase()) -
-          Number(a.symbol.toLowerCase() === query.toLowerCase()) ||
+        Number(b.symbol.toLowerCase() === lookup.query.toLowerCase()) -
+          Number(a.symbol.toLowerCase() === lookup.query.toLowerCase()) ||
         a.symbol.localeCompare(b.symbol),
     );
   }

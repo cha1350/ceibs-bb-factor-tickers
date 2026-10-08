@@ -1,5 +1,6 @@
 import Papa from "papaparse";
 import type { Row, Dataset } from "./types";
+import { parseSecurityQuery } from "./security-search";
 export function parseStockInput(text: string): string[] {
   const chunks = Papa.parse<string[]>(text.replace(/;/g, ","), {
     delimiter: ",",
@@ -9,7 +10,10 @@ export function parseStockInput(text: string): string[] {
     .map((x) => x.trim())
     .filter(Boolean);
   const tokens = chunks.flatMap((x) =>
-    /^[A-Z0-9.^-]+(?:\s+[A-Z0-9.^-]+)+$/.test(x) ? x.split(/\s+/) : x,
+    !parseSecurityQuery(x).currency &&
+    /^[A-Z0-9.^-]+(?:\s+[A-Z0-9.^-]+)+$/.test(x)
+      ? x.split(/\s+/)
+      : x,
   );
   return [...new Map(tokens.map((x) => [x.toLowerCase(), x])).values()];
 }

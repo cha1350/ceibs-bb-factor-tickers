@@ -176,6 +176,10 @@ export async function loadStock(
     }
   }
   let bars: Bar[] = parseBars(data.prices ?? []);
+  if (statuses.some((s) => /access denied \((402|403)\)/.test(s.message)))
+    warnings.push(
+      `FMP denied dataset access for ${security.symbol}. Finding a listing does not confirm your subscription includes its market data. Review endpoint status below and import missing CSV datasets, or confirm coverage with FMP.`,
+    );
   if (
     bars.length &&
     source === "fmp" &&

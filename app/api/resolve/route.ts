@@ -9,6 +9,11 @@ import {
 } from "@/lib/server";
 import { FmpProvider } from "@/lib/providers/fmp";
 import { demoData } from "@/lib/demo";
+import {
+  matchesSecurity,
+  parseSecurityQuery,
+  unresolvedSecurityMessage,
+} from "@/lib/security-search";
 export const maxDuration = 300;
 export async function POST(request: Request) {
   try {
@@ -24,24 +29,20 @@ export async function POST(request: Request) {
           input.source === "demo"
             ? demoData().map((s) => s.security)
             : importedSecurities(imports);
-        const matches = local.filter(
-          (s) =>
-            s.symbol.toLowerCase() === query.toLowerCase() ||
-            s.name.toLowerCase().includes(query.toLowerCase()),
-        );
+        const matches = local.filter((s) => matchesSecurity(s, query));
         const securities =
           matches.length || input.source !== "fmp"
             ? matches
             : await provider.search(query);
         const exact = securities.filter(
-          (s) => s.symbol.toLowerCase() === query.toLowerCase(),
+          (s) =>
+            s.symbol.toLowerCase() ===
+            parseSecurityQuery(query).query.toLowerCase(),
         );
         results.push({
           query,
           matches: exact.length === 1 ? exact : securities,
-          error: securities.length
-            ? null
-            : "No matching security. Use a ticker or try another company name.",
+          error: securities.length ? null : unresolvedSecurityMessage(query),
         });
       } catch (e) {
         results.push({ query, matches: [], error: errorMessage(e) });

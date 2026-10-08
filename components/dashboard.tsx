@@ -628,8 +628,14 @@ export default function Dashboard() {
                     rows={2}
                     value={settings.watchlist}
                     onChange={(e) => update("watchlist", e.target.value)}
-                    placeholder="AAPL, Microsoft, NVIDIA"
+                    placeholder="AAPL, Microsoft, Yonex JPY, 7906.T"
                   />
+                  <p className="muted text-xs mt-2">
+                    Add a currency to select its listing, e.g. Yonex JPY.
+                    Separate entries with commas or new lines. Search results do
+                    not confirm FMP dataset access. JPY stocks can be ranked;
+                    portfolio allocation currently requires USD prices.
+                  </p>
                 </div>
                 <div className="xl:w-60">
                   <label htmlFor="source" className="block mb-2">
@@ -684,7 +690,7 @@ export default function Dashboard() {
                   {source === "fmp"
                     ? health?.configured
                       ? `Server key configured · ${health.requestsToday}/${health.budget} local requests today · actual entitlements checked on retrieval`
-                      : "FMP key not configured. Add FMP_API_KEY to .env.local, or import CSV."
+                      : "FMP key not configured. Add FMP_API_KEY to your host's server environment (Vercel Settings → Environment Variables), or .env.local for local use; redeploy or restart. CSV is supported."
                     : source === "csv"
                       ? "Import profiles and prices first. Optional datasets complete fundamental scores."
                       : "12 illustrative stocks · fixed synthetic dataset ending October 7, 2026"}

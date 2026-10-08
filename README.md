@@ -50,6 +50,8 @@ Upload a watchlist with `ticker`, `symbol`, `name`, or `company` as its header. 
 
 Use **Import financial datasets** to choose a dataset and download a header-only template. Imports replace that entire dataset for matching symbols. In CSV-only mode, import profile and price history first, then add optional fundamentals. Rows must use provider-style canonical field names:
 
+Company names and tickers may include a trailing currency qualifier, such as `Yonex JPY` or `7906.T JPY`. This searches `Yonex` or `7906.T` and filters the returned listings by JPY; it does not convert prices or establish data entitlement. Separate qualified entries with commas or new lines. For Yonex's Japanese listing, choose `7906.T` / JPX / JPY. Non-USD stocks can be ranked but are excluded from the USD portfolio until FX conversion is implemented. A successful listing search does not guarantee that an FMP plan includes its price or fundamental datasets; inspect endpoint status and import missing datasets if available.
+
 | Dataset   | Required columns                                                               |
 | --------- | ------------------------------------------------------------------------------ |
 | profile   | symbol, companyName, sector, currency, exchange                                |

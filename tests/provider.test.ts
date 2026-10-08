@@ -18,6 +18,58 @@ const response = (
   headers?: Record<string, string>,
 ) => new Response(JSON.stringify(data), { status, headers });
 describe("FMP service", () => {
+  it("searches the company without its currency suffix and filters actual provider listings", async () => {
+    const fetcher = vi.fn().mockImplementation(async () =>
+      response([
+        {
+          symbol: "7906.T",
+          name: "YONEX Co., Ltd.",
+          exchange: "JPX",
+          currency: "JPY",
+        },
+        {
+          symbol: "YONXF",
+          name: "YONEX Co., Ltd.",
+          exchange: "OTC",
+          currency: "USD",
+        },
+      ]),
+    );
+    vi.stubGlobal("fetch", fetcher);
+    const { FmpProvider } = await import("../lib/providers/fmp");
+    expect(await new FmpProvider().search("Yonex JPY")).toEqual([
+      {
+        symbol: "7906.T",
+        name: "YONEX Co., Ltd.",
+        exchange: "JPX",
+        currency: "JPY",
+      },
+    ]);
+    expect(fetcher.mock.calls).toHaveLength(2);
+    for (const [url] of fetcher.mock.calls)
+      expect(new URL(url).searchParams.get("query")).toBe("Yonex");
+  });
+  it("explains subscription denial after a successful listing search without inventing data", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async () => response({}, 402)),
+    );
+    const { loadStock } = await import("../lib/server");
+    const stock = await loadStock(
+      { symbol: "7906.T", name: "Yonex", exchange: "JPX", currency: "JPY" },
+      todayIn(),
+      "fmp",
+      {},
+    );
+    expect(stock.bars).toEqual([]);
+    expect(stock.fundamentals.roe).toBeNull();
+    expect(
+      stock.warnings.some((w) =>
+        w.includes("FMP denied dataset access for 7906.T"),
+      ),
+    ).toBe(true);
+    expect(stock.statuses.every((s) => s.status === "unavailable")).toBe(true);
+  });
   it("keeps credentials in the server request and health omits them", async () => {
     const fetcher = vi
       .fn()
@@ -142,6 +194,42 @@ describe("FMP service", () => {
   });
 });
 describe("server integration", () => {
+  it("resolves currency-qualified CSV names and rejects the wrong currency", async () => {
+    const { POST } = await import("../app/api/resolve/route");
+    const r = await POST(
+      new Request("http://localhost/api/resolve", {
+        method: "POST",
+        body: JSON.stringify({
+          queries: ["Yonex JPY", "Yonex EUR"],
+          source: "csv",
+          imports: {
+            profile: [
+              {
+                symbol: "7906.T",
+                companyName: "YONEX Co., Ltd.",
+                sector: "Consumer Cyclical",
+                exchange: "JPX",
+                currency: "JPY",
+              },
+              {
+                symbol: "YONXF",
+                companyName: "YONEX Co., Ltd.",
+                sector: "Consumer Cyclical",
+                exchange: "OTC",
+                currency: "USD",
+              },
+            ],
+          },
+        }),
+      }),
+    );
+    const { results } = await r.json();
+    expect(results[0].matches.map((s: { symbol: string }) => s.symbol)).toEqual(
+      ["7906.T"],
+    );
+    expect(results[1].matches).toEqual([]);
+    expect(results[1].error).toContain("No EUR listing");
+  });
   it("runs ticker resolution → synthetic retrieval without a key", async () => {
     vi.stubEnv("FMP_API_KEY", "");
     const { POST: resolve } = await import("../app/api/resolve/route");
