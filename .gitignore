@@ -1,0 +1,9 @@
+node_modules/
+.DS_Store
+.next/
+.env*
+!.env.example
+*.tsbuildinfo
+next-env.d.ts
+.sites-runtime/
+.open-next/
