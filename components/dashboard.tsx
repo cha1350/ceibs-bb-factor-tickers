@@ -805,6 +805,21 @@ export default function Dashboard() {
               {error}
             </div>
           )}
+          {snapshot.stocks
+            .flatMap((stock) =>
+              stock.warnings.filter((warning) =>
+                warning.startsWith("FMP denied dataset access"),
+              ),
+            )
+            .map((warning) => (
+              <div
+                role="alert"
+                key={warning}
+                className="border border-amber-400/30 rounded-md bg-amber-400/5 p-4 text-sm text-amber-400"
+              >
+                {warning}
+              </div>
+            ))}
           {!!savedNote && (
             <div role="status" className="muted text-sm flex justify-between">
               {savedNote}
